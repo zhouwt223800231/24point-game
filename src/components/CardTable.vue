@@ -84,11 +84,12 @@ function onPointerUp(e) {
     </div>
 
     <!-- 拖拽幽灵叠 -->
-    <div v-if="game.state.drag" class="ghost-stack" :style="{ transform: `translate(${game.state.drag.ghostX}px, ${game.state.drag.ghostY}px)` }">
+    <div v-if="game.state.drag && game.state.drag.moved" class="ghost-stack" :style="{ transform: `translate(${game.state.drag.ghostX}px, ${game.state.drag.ghostY}px)` }">
       <CardStack :group="getGroup(game.state.drag.sourceId)" ghost />
     </div>
 
     <div class="table-message" :class="{ show: game.state.message }"><span>{{ game.state.message }}</span></div>
   </section>
 </template>
+
 

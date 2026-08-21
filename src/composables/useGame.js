@@ -138,12 +138,13 @@ export function useGame() {
     if (!g) return false
     // 待选运算的叠（2 张以上且未选运算符）必须先选运算符才能继续参与合并
     if (g.layers.length >= 2 && !g.op) return false
-    state.drag = { sourceId: groupId, pointerId, offsetX, offsetY, ghostX: 0, ghostY: 0, hoverGroupId: null }
+    state.drag = { sourceId: groupId, pointerId, offsetX, offsetY, ghostX: 0, ghostY: 0, hoverGroupId: null, moved: false }
     return true
   }
 
   function moveDrag(x, y, hoverGroupId) {
     if (!state.drag) return
+    state.drag.moved = true
     state.drag.ghostX = x - state.drag.offsetX
     state.drag.ghostY = y - state.drag.offsetY
     state.drag.hoverGroupId = hoverGroupId
@@ -264,5 +265,6 @@ export function useGame() {
     stopTimer,
   }
 }
+
 
 

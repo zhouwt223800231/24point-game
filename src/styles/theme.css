@@ -240,16 +240,7 @@ body {
 .card-stack.ghost .stack-result {
   display: none;
 }
-/* 活动叠（待选/可换运算符）：细琥珀圆环 */
-.card-stack.active::after {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border: 2px solid var(--accent);
-  border-radius: 18px;
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
-  pointer-events: none;
-}
+
 /* 拖拽投放目标：琥珀高亮 */
 .group-slot.is-target .card-stack::after {
   content: "";
@@ -549,4 +540,5 @@ body {
     min-height: 420px;
   }
 }
+
 
