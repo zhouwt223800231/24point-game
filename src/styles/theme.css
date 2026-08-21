@@ -349,6 +349,10 @@ body {
   font-weight: 700;
   margin-top: 2px;
 }
+.playing-card.joker .idx-value {
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
 .merged-tag {
   position: absolute;
   top: 8px;
@@ -569,6 +573,7 @@ body {
     min-height: 420px;
   }
 }
+
 
 
 

@@ -1,6 +1,6 @@
 <script setup>
-import { inject, computed } from 'vue'
-import { formatRat, formatDecimal } from '../core/rational.js'
+import { computed } from 'vue'
+import { formatRat } from '../core/rational.js'
 
 const props = defineProps({
   card: { type: Object, required: true },
@@ -18,20 +18,21 @@ const TILTS = [
 ]
 
 const style = computed(() => ({ '--tilt': props.tilt || (props.ghost ? 'rotate(0deg)' : TILTS[props.index]) }))
-// 小数牌按小数显示，分数牌/合并结果按 n/d 显示，整数显示整数
-const valueText = computed(() => (props.card.display === 'dec' ? formatDecimal(props.card.value) : formatRat(props.card.value)))
+// 原始牌显示面值（10→10/J/Q/K/JOKER）；合成牌显示运算结果（含分数）
+const valueText = computed(() => (props.card.face ? props.card.face : formatRat(props.card.value)))
+const isJoker = computed(() => props.card.face === 'JOKER')
 </script>
 
 <template>
-  <div class="playing-card" :class="{ red: card.color === 'red', merged: card.kind === 'merged', dragging, ghost }" :style="style">
-    <!-- 经典扑克角标：左上数字+花色，右下 180° 镜像 -->
+  <div class="playing-card" :class="{ red: card.color === 'red', merged: card.kind === 'merged', joker: isJoker, dragging, ghost }" :style="style">
+    <!-- 经典扑克角标：左上数字/面值+花色，右下 180° 镜像 -->
     <div class="corner-index tl">
       <span class="idx-value">{{ valueText }}</span>
-      <span v-if="card.kind === 'original'" class="idx-suit">{{ card.suit }}</span>
+      <span v-if="card.kind === 'original' && card.face !== 'JOKER'" class="idx-suit">{{ card.suit }}</span>
     </div>
     <div class="corner-index br">
       <span class="idx-value">{{ valueText }}</span>
-      <span v-if="card.kind === 'original'" class="idx-suit">{{ card.suit }}</span>
+      <span v-if="card.kind === 'original' && card.face !== 'JOKER'" class="idx-suit">{{ card.suit }}</span>
     </div>
     <span v-if="card.kind === 'merged'" class="merged-tag">Σ</span>
   </div>

@@ -14,7 +14,8 @@ npm test           # run unit tests (Vitest)
 
 ## How to play
 
-- The game deals 4 random number cards (1–10), always guaranteed solvable to the target 24.
+- The game deals 4 cards (values 1–10; a 10 may show as 10 / J / Q / K / JOKER, all worth 10), always guaranteed solvable to the target 24.
+- **Difficulty**: Easy = integer cards solvable with + − × only; Medium = integer path (all intermediate values are integers); Hard = integer cards whose solution **requires fractional/decimal steps** (e.g. 8 ÷ (3 − 8 ÷ 3)).
 - **Stack cards**: drag a card onto another; the dragged card stacks on top and stays overlapped.
 - **Pick an operation**: tap the `+ − × ÷` buttons at the bottom; the result shows faintly below the stack (hand-written charcoal). You can switch operations to preview freely (order is fixed: **top card op bottom card**).
 - Drag a third card onto a stack to commit its current value and form a new stack; when all 4 cards are in one stack and the result equals 24 you win (+score, auto-deal next hand).
@@ -36,3 +37,4 @@ npm test           # run unit tests (Vitest)
 - Phase 2: switchable targets 36 / 48 (solver and UI target are already parameterized).
 - Phase 3: random-target mode (random target + random cards, validated solvable by the same solver).
 - Later: 54/108-card physical deck (J/Q/K/jokers = 10), discard area, deck exhaustion, sound effects, card wear.
+
