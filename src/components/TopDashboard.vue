@@ -25,10 +25,11 @@ const timeText = computed(() => {
       <span class="stat"><span class="stat-label">Time</span> <b class="stat-num mono">{{ timeText }}</b></span>
     </div>
     <div class="dash-right">
-      <button class="charcoal-btn small" title="Undo last stack" @click="game.undo()">Undo ↶</button>
-      <button class="charcoal-btn small" title="Show a merge hint" @click="game.hint()">Hint ?</button>
-      <button class="charcoal-btn small" title="Deal a new hand" @click="game.deal()">New Hand ⟳</button>
-      <button class="charcoal-btn small" title="Restart the game" @click="game.restart()">Restart</button>
+      <button class="btn small" title="Undo last stack" @click="game.undo()">Undo ↶</button>
+      <button class="btn small" title="Show a merge hint" @click="game.hint()">Hint ?</button>
+      <button class="btn small" title="Deal a new hand" @click="game.deal()">New Hand ⟳</button>
+      <button class="btn small" title="Restart the game" @click="game.restart()">Restart</button>
     </div>
   </header>
 </template>
+

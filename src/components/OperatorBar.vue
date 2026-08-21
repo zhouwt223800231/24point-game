@@ -22,7 +22,7 @@ const enabled = computed(() => !!activeGroup.value && !!activeGroup.value.sub)
       <button
         v-for="op in OPS"
         :key="op.key"
-        class="charcoal-btn op-btn"
+        class="btn op-btn"
         :class="{ selected: activeGroup && activeGroup.op === op.key }"
         :disabled="!enabled"
         type="button"
@@ -31,3 +31,4 @@ const enabled = computed(() => !!activeGroup.value && !!activeGroup.value.sub)
     </div>
   </div>
 </template>
+

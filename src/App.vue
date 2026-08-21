@@ -15,24 +15,6 @@ onBeforeUnmount(() => game.stopTimer())
 
 <template>
   <div class="page">
-    <!-- 木炭毛躁边缘滤镜（全局 SVG） -->
-    <svg class="svg-filters" aria-hidden="true">
-      <defs>
-        <filter id="rough-edge">
-          <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="7" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-        <filter id="rough-strong">
-          <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="4" seed="13" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-        <filter id="rough-ink">
-          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="5" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </defs>
-    </svg>
-
     <TopDashboard />
     <CardTable />
     <OperatorBar />

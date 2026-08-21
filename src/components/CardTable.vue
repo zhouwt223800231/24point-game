@@ -88,6 +88,7 @@ function onPointerUp(e) {
       <CardStack :group="getGroup(game.state.drag.sourceId)" ghost />
     </div>
 
-    <div class="table-message" :class="{ show: game.state.message }">{{ game.state.message }}</div>
+    <div class="table-message" :class="{ show: game.state.message }"><span>{{ game.state.message }}</span></div>
   </section>
 </template>
+
