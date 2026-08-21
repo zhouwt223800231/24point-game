@@ -3,9 +3,7 @@ import { onMounted, onBeforeUnmount, provide } from 'vue'
 import { useGame } from './composables/useGame'
 import TopDashboard from './components/TopDashboard.vue'
 import CardTable from './components/CardTable.vue'
-import MergeTrace from './components/MergeTrace.vue'
-import ActionBar from './components/ActionBar.vue'
-import OperationPicker from './components/OperationPicker.vue'
+import OperatorBar from './components/OperatorBar.vue'
 import FeedbackOverlay from './components/FeedbackOverlay.vue'
 
 const game = useGame()
@@ -33,9 +31,7 @@ onBeforeUnmount(() => game.stopTimer())
 
     <TopDashboard />
     <CardTable />
-    <MergeTrace />
-    <ActionBar />
-    <OperationPicker />
+    <OperatorBar />
     <FeedbackOverlay />
   </div>
 </template>

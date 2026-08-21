@@ -1,39 +1,39 @@
 <script setup>
 import { inject, ref } from 'vue'
-import PlayingCard from './PlayingCard.vue'
+import CardStack from './CardStack.vue'
 
 const game = inject('game')
-const cardEls = ref([])
+const groupEls = ref([])
 const active = ref({ on: false, pointerId: null })
 
-function setCardEl(el, i) {
-  if (el) cardEls.value[i] = el
+function setGroupEl(el, i) {
+  if (el) groupEls.value[i] = el
 }
 
-function getCard(id) {
-  return game.state.cards.find((c) => c.id === id)
+function getGroup(id) {
+  return game.state.groups.find((g) => g.id === id)
 }
 
-// 命中检测：指针位置是否落在某张目标卡上（排除被拖的卡）
+// 命中检测：指针位置是否落在某叠上（排除被拖的叠）
 function hitTest(x, y) {
   const d = game.state.drag
   if (!d) return null
-  for (let i = 0; i < game.state.cards.length; i++) {
-    const card = game.state.cards[i]
-    if (card.id === d.sourceId) continue
-    const el = cardEls.value[i]
+  for (let i = 0; i < game.state.groups.length; i++) {
+    const g = game.state.groups[i]
+    if (g.id === d.sourceId) continue
+    const el = groupEls.value[i]
     if (!el) continue
     const r = el.getBoundingClientRect()
-    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return card.id
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return g.id
   }
   return null
 }
 
 function onPointerDown(e, i) {
-  const card = game.state.cards[i]
-  if (!card || game.state.cards.length <= 1) return
+  const g = game.state.groups[i]
+  if (!g || game.state.groups.length <= 1) return
   const rect = e.currentTarget.getBoundingClientRect()
-  const ok = game.beginDrag(card.id, e.pointerId, e.clientX - rect.left, e.clientY - rect.top)
+  const ok = game.beginDrag(g.id, e.pointerId, e.clientX - rect.left, e.clientY - rect.top)
   if (!ok) return
   active.value = { on: true, pointerId: e.pointerId }
   try {
@@ -56,23 +56,34 @@ function onPointerUp(e) {
 
 <template>
   <section class="card-table">
-    <div
-      v-for="(card, i) in game.state.cards"
-      :key="card.id"
-      class="card-slot"
-      :ref="(el) => setCardEl(el, i)"
-      :class="{ 'is-target': !!game.state.drag && card.id === game.state.drag.hoverTargetId }"
-      @pointerdown="onPointerDown($event, i)"
-      @pointermove="onPointerMove($event)"
-      @pointerup="onPointerUp($event)"
-      @pointercancel="onPointerUp($event)"
-    >
-      <PlayingCard :card="card" :index="i" :dragging="!!game.state.drag && card.id === game.state.drag.sourceId" />
+    <div class="table-info">
+      <span class="trace-badge" title="当前算式">算式：{{ game.state.trace || '—' }}</span>
+      <span v-if="game.state.hint" class="hint-badge">💡 {{ game.state.hint }}</span>
     </div>
 
-    <!-- 拖拽幽灵卡 -->
-    <div v-if="game.state.drag" class="ghost-card" :style="{ transform: `translate(${game.state.drag.ghostX}px, ${game.state.drag.ghostY}px)` }">
-      <PlayingCard :card="getCard(game.state.drag.sourceId)" :index="0" ghost />
+    <div class="table-center">
+      <div
+        v-for="(g, i) in game.state.groups"
+        :key="g.id"
+        class="group-slot"
+        :ref="(el) => setGroupEl(el, i)"
+        :class="{ 'is-target': !!game.state.drag && g.id === game.state.drag.hoverGroupId }"
+        @pointerdown="onPointerDown($event, i)"
+        @pointermove="onPointerMove($event)"
+        @pointerup="onPointerUp($event)"
+        @pointercancel="onPointerUp($event)"
+      >
+        <CardStack
+          :group="g"
+          :active="g.id === game.state.activeGroupId"
+          :dragging="!!game.state.drag && g.id === game.state.drag.sourceId"
+        />
+      </div>
+    </div>
+
+    <!-- 拖拽幽灵叠 -->
+    <div v-if="game.state.drag" class="ghost-stack" :style="{ transform: `translate(${game.state.drag.ghostX}px, ${game.state.drag.ghostY}px)` }">
+      <CardStack :group="getGroup(game.state.drag.sourceId)" ghost />
     </div>
 
     <div class="table-message" :class="{ show: game.state.message }">{{ game.state.message }}</div>

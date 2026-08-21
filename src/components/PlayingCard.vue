@@ -7,9 +7,9 @@ const props = defineProps({
   index: { type: Number, default: 0 },
   dragging: { type: Boolean, default: false },
   ghost: { type: Boolean, default: false },
+  tilt: { type: String, default: '' }, // 自定义倾斜/偏移（叠牌层用）
 })
 
-// 模拟真实发牌的错落摆放
 const TILTS = [
   'rotate(-7deg) translateY(6px)',
   'rotate(-2deg) translateY(-6px)',
@@ -17,7 +17,7 @@ const TILTS = [
   'rotate(8deg) translateY(0px)',
 ]
 
-const style = computed(() => ({ '--tilt': props.ghost ? 'rotate(0deg)' : TILTS[props.index] }))
+const style = computed(() => ({ '--tilt': props.tilt || (props.ghost ? 'rotate(0deg)' : TILTS[props.index]) }))
 const valueText = computed(() => formatRat(props.card.value))
 </script>
 
@@ -31,4 +31,3 @@ const valueText = computed(() => formatRat(props.card.value))
     <span class="card-value">{{ valueText }}</span>
   </div>
 </template>
-
