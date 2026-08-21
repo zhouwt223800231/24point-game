@@ -1,8 +1,8 @@
 // 游戏状态机（V3 叠牌合成版）：发牌（保证可解）、拖牌叠放、运算符预览、自动结算、撤销、提示、计分、计时。
 import { reactive } from 'vue'
-import { hasSolution, makeHint } from '../core/solver.js'
+import { hasSolution, makeHint, solveAll, hasFractionalStep } from '../core/solver.js'
 import { makeOriginalCard, makeSingleGroup, makeStack, applyOp, groupIsSolved, formatGroupTree } from '../core/merge.js'
-import { formatRat } from '../core/rational.js'
+import { formatRat, formatDecimal, toRat } from '../core/rational.js'
 import { getScoreBand, formatSeconds } from '../core/scoring.js'
 
 const SUITS = [
@@ -12,26 +12,67 @@ const SUITS = [
   { sym: '♦', color: 'red' },
 ]
 
-// 兜底：随机重抽 10 次仍无解时，从这些已知可解手牌中选一副
-const FALLBACK_HANDS = [
+// 三档难度：Easy=只用 +−×、Medium=四则但中间值整数、Hard=分数/小数混合牌且含分数中间步
+const EASY_FALLBACK = [
   [1, 2, 3, 4],
-  [1, 3, 4, 6],
+  [1, 4, 5, 8],
+  [2, 3, 4, 6],
+  [3, 4, 6, 8],
+]
+const MEDIUM_FALLBACK = [
+  [1, 2, 3, 4],
+  [2, 3, 5, 6],
+  [3, 5, 6, 8],
+  [2, 3, 4, 6],
+]
+const HARD_FALLBACK = [
   [8, 3, 8, 3],
   [3, 3, 8, 8],
-  [2, 3, 5, 6],
-  [1, 5, 5, 5],
+  [1, 3, 4, 6],
+]
+const HARD_POOL = [
+  { n: 1, d: 1, display: '' }, { n: 2, d: 1, display: '' }, { n: 3, d: 1, display: '' },
+  { n: 4, d: 1, display: '' }, { n: 5, d: 1, display: '' }, { n: 6, d: 1, display: '' },
+  { n: 7, d: 1, display: '' }, { n: 8, d: 1, display: '' }, { n: 9, d: 1, display: '' },
+  { n: 10, d: 1, display: '' },
+  { n: 1, d: 2, display: 'dec' }, { n: 3, d: 2, display: 'dec' }, { n: 5, d: 2, display: 'dec' }, { n: 7, d: 2, display: 'dec' },
+  { n: 1, d: 3, display: 'frac' }, { n: 2, d: 3, display: 'frac' },
+  { n: 1, d: 4, display: 'frac' }, { n: 3, d: 4, display: 'frac' },
+  { n: 4, d: 3, display: 'frac' }, { n: 5, d: 3, display: 'frac' },
+  { n: 2, d: 5, display: 'frac' }, { n: 3, d: 5, display: 'frac' },
 ]
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1))
 }
 
-function dealSolvable(target) {
-  for (let i = 0; i < 10; i++) {
-    const nums = [0, 1, 2, 3].map(() => randInt(1, 10))
-    if (hasSolution(nums, target)) return nums
+const toPick = (n) => ({ n, d: 1, display: '' })
+
+// 按难度抽一副可解手牌（返回 {n,d,display} 数组）
+function drawHand(difficulty, target) {
+  if (difficulty === 'easy') {
+    for (let i = 0; i < 20; i++) {
+      const nums = [0, 1, 2, 3].map(() => randInt(1, 10))
+      if (hasSolution(nums, target, { allowOps: ['+', '-', '*'] })) return nums.map(toPick)
+    }
+    return EASY_FALLBACK[randInt(0, EASY_FALLBACK.length - 1)].map(toPick)
   }
-  return [...FALLBACK_HANDS[randInt(0, FALLBACK_HANDS.length - 1)]]
+  if (difficulty === 'hard') {
+    for (let i = 0; i < 20; i++) {
+      const hand = [0, 1, 2, 3].map(() => HARD_POOL[randInt(0, HARD_POOL.length - 1)])
+      const values = hand.map((p) => ({ n: p.n, d: p.d }))
+      const { full } = solveAll(values, target)
+      const ok = full.some((e) => e.v.n === target && e.v.d === 1 && hasFractionalStep(e.tree))
+      if (ok) return hand.map((p) => ({ ...p }))
+    }
+    return HARD_FALLBACK[randInt(0, HARD_FALLBACK.length - 1)].map(toPick)
+  }
+  // medium
+  for (let i = 0; i < 20; i++) {
+    const nums = [0, 1, 2, 3].map(() => randInt(1, 10))
+    if (hasSolution(nums, target, { integerOnly: true })) return nums.map(toPick)
+  }
+  return MEDIUM_FALLBACK[randInt(0, MEDIUM_FALLBACK.length - 1)].map(toPick)
 }
 
 function cloneTree(t) {
@@ -63,6 +104,7 @@ function cloneGroup(g) {
 export function useGame() {
   const state = reactive({
     target: 24, // 阶段二/三从这里切换 36/48/随机
+    difficulty: 'medium', // easy | medium | hard
     groups: [], // 牌桌上的叠组（4 → 1 叠）
     handValues: [], // 本局原始 4 个数值（提示用）
     activeGroupId: null, // 最近一次叠放、等待/允许选运算符的叠
@@ -106,22 +148,33 @@ export function useGame() {
     state.trace = state.groups.map(formatGroupTree).join('　·　')
   }
 
+  function formatDraw(p) {
+    const v = toRat(p)
+    return p.display === 'dec' ? formatDecimal(v) : formatRat(v)
+  }
+
   function deal() {
-    const values = dealSolvable(state.target)
-    state.handValues = [...values]
-    state.groups = values.map((v, i) => {
+    const draw = drawHand(state.difficulty, state.target)
+    state.handValues = draw.map((p) => toRat(p))
+    state.groups = draw.map((p, i) => {
       const suit = SUITS[randInt(0, SUITS.length - 1)]
-      return makeSingleGroup(makeOriginalCard(v, i, { suit: suit.sym, color: suit.color }), i)
+      return makeSingleGroup(makeOriginalCard(p, i, { suit: suit.sym, color: suit.color, display: p.display || '' }), i)
     })
     history = []
     state.roundStart = Date.now()
     state.lastRound = null
     state.activeGroupId = null
     state.hint = ''
-    state.trace = values.join('　·　')
+    state.trace = draw.map(formatDraw).join(' · ')
     state.fx.active = false
     state.message = ''
     state.drag = null
+  }
+
+  function setDifficulty(d) {
+    if (!['easy', 'medium', 'hard'].includes(d)) return
+    state.difficulty = d
+    deal()
   }
 
   function restart() {
@@ -196,7 +249,7 @@ export function useGame() {
   function afterOp() {
     if (groupIsSolved(state.groups, state.target)) {
       const seconds = (Date.now() - state.roundStart) / 1000
-      const band = getScoreBand(seconds)
+      const band = getScoreBand(seconds, state.difficulty)
       state.score += band.points
       state.solved++
       state.lastRound = { praise: band.praise, points: band.points, time: formatSeconds(seconds) }
@@ -254,6 +307,7 @@ export function useGame() {
     state,
     deal,
     restart,
+    setDifficulty,
     beginDrag,
     moveDrag,
     endDrag,
@@ -265,6 +319,7 @@ export function useGame() {
     stopTimer,
   }
 }
+
 
 
 

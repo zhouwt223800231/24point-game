@@ -32,7 +32,25 @@ export function formatRat(v) {
   return v.d === 1 ? String(v.n) : `${v.n}/${v.d}`
 }
 
+// 统一转为有理数：接受 number / {n,d} / "n/d" 字符串
+export function toRat(value) {
+  if (value == null) return null
+  if (typeof value === 'object') return rat(value.n, value.d)
+  if (typeof value === 'string') {
+    const parts = value.split('/')
+    return rat(Number(parts[0]), parts.length > 1 ? Number(parts[1]) : 1)
+  }
+  return rat(value)
+}
+
+// 小数显示（最多两位，去尾零）：0.5 → "0.5"
+export function formatDecimal(v) {
+  const val = Math.round((v.n / v.d) * 100) / 100
+  return String(val)
+}
+
 // 判断有理数是否等于整数
 export function ratEqInt(v, n) {
   return v.n === n && v.d === 1
 }
+

@@ -116,6 +116,35 @@ body {
 .mono {
   font-variant-numeric: tabular-nums;
 }
+.diff-switch {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+.diff-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  box-shadow: none;
+  color: var(--text-2);
+  background: transparent;
+}
+.diff-btn:hover:not(:disabled) {
+  color: var(--accent-strong);
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.diff-btn.active {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.3);
+}
 .dash-right {
   display: flex;
   gap: 8px;
@@ -540,5 +569,6 @@ body {
     min-height: 420px;
   }
 }
+
 
 

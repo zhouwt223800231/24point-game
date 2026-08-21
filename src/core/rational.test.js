@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rat, addRat, subRat, mulRat, divRat, formatRat, ratEqInt } from '../core/rational'
+import { rat, addRat, subRat, mulRat, divRat, formatRat, formatDecimal, toRat, ratEqInt } from '../core/rational.js'
 
 describe('rational 有理数', () => {
   it('rat 约分与符号归一', () => {
@@ -24,3 +24,19 @@ describe('rational 有理数', () => {
     expect(ratEqInt(rat(24, 2), 24)).toBe(false)
   })
 })
+describe('rational 转换与小数显示', () => {
+  it('toRat 支持 number / {n,d} / 字符串', () => {
+    expect(toRat(5)).toEqual({ n: 5, d: 1 })
+    expect(toRat({ n: 3, d: 4 })).toEqual({ n: 3, d: 4 })
+    expect(toRat('8/3')).toEqual({ n: 8, d: 3 })
+    expect(toRat('2')).toEqual({ n: 2, d: 1 })
+    expect(toRat(null)).toBeNull()
+  })
+
+  it('formatDecimal', () => {
+    expect(formatDecimal(rat(1, 2))).toBe('0.5')
+    expect(formatDecimal(rat(3, 2))).toBe('1.5')
+    expect(formatDecimal(rat(7, 2))).toBe('3.5')
+  })
+})
+

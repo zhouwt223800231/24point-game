@@ -1,5 +1,5 @@
 // 叠牌合成核心：卡片/叠组模型、合并、运算、结算判定、表达式树格式化（纯函数，UI 无关）。
-import { rat, addRat, subRat, mulRat, divRat } from './rational.js'
+import { rat, toRat, formatRat, addRat, subRat, mulRat, divRat } from './rational.js'
 
 const PREC = { '+': 1, '-': 1, '*': 2, '/': 2 }
 
@@ -17,7 +17,7 @@ function needParens(childOp, parentOp, isRight) {
 
 // 表达式树 → 中缀字符串（括号最小化且正确）
 export function formatTree(tree) {
-  if (tree.kind === 'num') return String(tree.value)
+  if (tree.kind === 'num') return formatRat(tree.value)
   const left = formatTree(tree.left)
   const right = formatTree(tree.right)
   const ls = needParens(tree.left && tree.left.op, tree.op, false) ? `(${left})` : left
@@ -28,7 +28,8 @@ export function formatTree(tree) {
 export const OP_FNS = { '+': addRat, '-': subRat, '*': mulRat, '/': divRat }
 
 export function makeOriginalCard(value, id, extra = {}) {
-  return { id, value: rat(value), tree: { kind: 'num', value }, kind: 'original', ...extra }
+  const v = toRat(value)
+  return { id, value: v, tree: { kind: 'num', value: v }, kind: 'original', ...extra }
 }
 
 let seq = 0
@@ -96,4 +97,5 @@ export function formatGroupTree(group) {
   const bottom = group.sub && group.sub.bottom
   return `${top ? formatTree(top.tree) : '?'} ? ${bottom ? formatTree(bottom.tree) : '?'}`
 }
+
 

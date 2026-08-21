@@ -3,6 +3,12 @@ import { inject, computed } from 'vue'
 
 const game = inject('game')
 
+const DIFFS = [
+  { key: 'easy', label: 'Easy' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'hard', label: 'Hard' },
+]
+
 const timeText = computed(() => {
   const s = game.state.elapsed
   const mm = String(Math.floor(s / 60)).padStart(2, '0')
@@ -16,6 +22,16 @@ const timeText = computed(() => {
     <div class="dash-left">
       <span class="target-badge">{{ game.state.target }}</span>
       <span class="target-caption">Target</span>
+    </div>
+    <div class="diff-switch" role="group" aria-label="Difficulty">
+      <button
+        v-for="d in DIFFS"
+        :key="d.key"
+        class="btn diff-btn"
+        :class="{ active: game.state.difficulty === d.key }"
+        type="button"
+        @click="game.setDifficulty(d.key)"
+      >{{ d.label }}</button>
     </div>
     <div class="dash-mid">
       <span class="stat"><span class="stat-label">Score</span> <b class="stat-num">{{ game.state.score }}</b></span>
@@ -32,4 +48,3 @@ const timeText = computed(() => {
     </div>
   </header>
 </template>
-

@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
-import { formatRat } from '../core/rational.js'
+import { inject, computed } from 'vue'
+import { formatRat, formatDecimal } from '../core/rational.js'
 
 const props = defineProps({
   card: { type: Object, required: true },
@@ -18,7 +18,8 @@ const TILTS = [
 ]
 
 const style = computed(() => ({ '--tilt': props.tilt || (props.ghost ? 'rotate(0deg)' : TILTS[props.index]) }))
-const valueText = computed(() => formatRat(props.card.value))
+// 小数牌按小数显示，分数牌/合并结果按 n/d 显示，整数显示整数
+const valueText = computed(() => (props.card.display === 'dec' ? formatDecimal(props.card.value) : formatRat(props.card.value)))
 </script>
 
 <template>
@@ -35,4 +36,3 @@ const valueText = computed(() => formatRat(props.card.value))
     <span v-if="card.kind === 'merged'" class="merged-tag">Σ</span>
   </div>
 </template>
-
