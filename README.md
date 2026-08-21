@@ -1,36 +1,38 @@
-# 24点卡牌游戏
+# 24 Card Game
 
-卡牌风格的 24 点计算游戏（Vue 3 + Vite，纯前端，无后端）。沉浸式木质桌面 + 木炭手绘风格，**叠牌合成**玩法。
+A card-style 24-point puzzle game (Vue 3 + Vite, pure front-end, no backend). Immersive wooden-table + charcoal hand-drawn UI with **stack-and-combine** gameplay and **time-based scoring**.
 
-## 运行
+## Run
 
 ```bash
-npm install        # 安装依赖
-npm run dev        # 开发模式（默认 http://localhost:5173）
-npm run build      # 生产构建，产物输出到 dist/
-npm run preview    # 预览生产构建
-npm test           # 运行单元测试（Vitest）
+npm install        # install dependencies
+npm run dev        # dev server (http://localhost:5173)
+npm run build      # production build → dist/
+npm run preview    # preview production build
+npm test           # run unit tests (Vitest)
 ```
 
-## 玩法
+## How to play
 
-- 系统随机发 4 张数字卡（1–10），保证本局可解出目标 24。
-- **叠牌**：把一张卡拖到另一张卡上，后拖来的卡**叠在目标卡上面**保持重叠。
-- **选运算**：点桌底 `+ − × ÷` 按钮，结果用木炭手写体**淡显在重叠的牌下方**；可以随时切换运算符实时预览（顺序固定为"上面的牌 op 下面的牌"）。
-- 拖第三张牌时按当前结果固定，并叠出新的一组；4 张牌全部叠成一叠且结果 = 24 即获胜（+1 分、自动发下一副）。
-- 「撤销」回退上一次叠牌；「提示」给出第一步合并建议；「换牌/重开」重置。
+- The game deals 4 random number cards (1–10), always guaranteed solvable to the target 24.
+- **Stack cards**: drag a card onto another; the dragged card stacks on top and stays overlapped.
+- **Pick an operation**: tap the `+ − × ÷` buttons at the bottom; the result shows faintly below the stack (hand-written charcoal). You can switch operations to preview freely (order is fixed: **top card op bottom card**).
+- Drag a third card onto a stack to commit its current value and form a new stack; when all 4 cards are in one stack and the result equals 24 you win (+score, auto-deal next hand).
+- **Scoring**: the faster you solve a hand, the more points you earn — `Incredible! (<5s, +100) / Amazing! (<10s, +80) / Great job! (<20s, +60) / Good job! (<40s, +40) / Nice try! (≥40s, +20)`.
+- `Undo` reverts the last stack; `Hint` suggests the first merge; `New Hand` / `Restart` reset.
 
-## 技术要点
+## Tech notes
 
-- `src/core/rational.js`：有理数（分数）四则运算，避免浮点误差。
-- `src/core/merge.js`：叠组模型——`makeStack`（叠放并捕获双方快照）、`applyOp`（top op bottom 预览）、`groupIsSolved`（单叠=目标）、`formatGroupTree`。
-- `src/core/solver.js`：子集 DP 求解器，支持任意目标值（24/36/48/随机），用于发牌可解校验与提示。
-- `src/composables/useGame.js`：叠组状态机（发牌/叠放/运算符预览/自动结算/撤销），组件间 provide/inject。
-- 拖拽用 **Pointer Events**（鼠标 + 触屏统一），`CardTable` 按"叠"命中检测。
-- 视觉：沉浸式单屏布局，木质桌面（CSS 木纹渐变 + feTurbulence 噪点 + 暗角）+ 炭笔/宣纸卡面。
+- `src/core/rational.js` — rational (fraction) arithmetic to avoid floating-point errors.
+- `src/core/merge.js` — stack model: `makeStack`, `applyOp` (top op bottom), `groupIsSolved`, `formatGroupTree`.
+- `src/core/solver.js` — subset-DP solver for any target (24/36/48/random), used for solvable dealing and hints.
+- `src/core/scoring.js` — time-band scoring + praise tiers.
+- `src/composables/useGame.js` — game state machine (deal/stack/operation preview/auto-settle/undo), provide/inject.
+- Drag uses **Pointer Events** (mouse + touch unified); `CardTable` hit-tests per stack.
+- Visuals: immersive single-screen layout, wooden table (CSS wood-grain gradients + feTurbulence noise + vignette) + charcoal/paper cards.
 
-## 后续路线
+## Roadmap
 
-- 阶段二：目标可切换 36 / 48（求解器与 UI 目标值已参数化）。
-- 阶段三：随机目标版本（随机目标 + 随机牌，用同一求解器校验可解）。
-- v1 增强：54/108 张实体牌堆（JQK/大小王=10）、弃牌区、牌堆耗尽结算、音效、卡牌包浆磨损。
+- Phase 2: switchable targets 36 / 48 (solver and UI target are already parameterized).
+- Phase 3: random-target mode (random target + random cards, validated solvable by the same solver).
+- Later: 54/108-card physical deck (J/Q/K/jokers = 10), discard area, deck exhaustion, sound effects, card wear.

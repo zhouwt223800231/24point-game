@@ -17,7 +17,7 @@ const enabled = computed(() => !!activeGroup.value && !!activeGroup.value.sub)
 
 <template>
   <div class="operator-bar">
-    <div v-if="enabled" class="order-hint">顺序：上面的牌 op 下面的牌</div>
+    <div v-if="enabled" class="order-hint">Order: top card op bottom card</div>
     <div class="op-row">
       <button
         v-for="op in OPS"

@@ -3,6 +3,7 @@ import { reactive } from 'vue'
 import { hasSolution, makeHint } from '../core/solver.js'
 import { makeOriginalCard, makeSingleGroup, makeStack, applyOp, groupIsSolved, formatGroupTree } from '../core/merge.js'
 import { formatRat } from '../core/rational.js'
+import { getScoreBand, formatSeconds } from '../core/scoring.js'
 
 const SUITS = [
   { sym: '♠', color: 'black' },
@@ -66,6 +67,9 @@ export function useGame() {
     handValues: [], // 本局原始 4 个数值（提示用）
     activeGroupId: null, // 最近一次叠放、等待/允许选运算符的叠
     solved: 0,
+    score: 0,
+    roundStart: 0,
+    lastRound: null, // 最近一次成功结算 { praise, points, time }
     elapsed: 0,
     hint: '',
     message: '',
@@ -110,6 +114,8 @@ export function useGame() {
       return makeSingleGroup(makeOriginalCard(v, i, { suit: suit.sym, color: suit.color }), i)
     })
     history = []
+    state.roundStart = Date.now()
+    state.lastRound = null
     state.activeGroupId = null
     state.hint = ''
     state.trace = values.join('　·　')
@@ -120,6 +126,7 @@ export function useGame() {
 
   function restart() {
     state.solved = 0
+    state.score = 0
     state.elapsed = 0
     deal()
   }
@@ -177,7 +184,7 @@ export function useGame() {
     if (!g || !g.sub) return
     const updated = applyOp(g, op)
     if (!updated) {
-      flash('不能除以 0，换一种运算')
+      flash('Cannot divide by 0 — try another operation')
       return
     }
     state.groups = state.groups.map((x) => (x.id === id ? updated : x))
@@ -187,19 +194,23 @@ export function useGame() {
 
   function afterOp() {
     if (groupIsSolved(state.groups, state.target)) {
+      const seconds = (Date.now() - state.roundStart) / 1000
+      const band = getScoreBand(seconds)
+      state.score += band.points
       state.solved++
+      state.lastRound = { praise: band.praise, points: band.points, time: formatSeconds(seconds) }
       triggerFx('success', '')
       // 结算动效结束后自动发下一副牌
       setTimeout(() => deal(), 1600)
     } else if (state.groups.length === 1) {
       const v = state.groups[0].value
-      if (v) flash(`当前结果 ${formatRat(v)} ≠ ${state.target}，可继续调整`)
+      if (v) flash(`Result ${formatRat(v)} ≠ ${state.target} — keep adjusting`)
     }
   }
 
   function undo() {
     if (!history.length) {
-      flash('没有可撤销的步骤')
+      flash('Nothing to undo')
       return
     }
     const prev = history.pop()
@@ -216,7 +227,7 @@ export function useGame() {
       state.hint = h
     } else {
       state.hint = ''
-      flash('这局似乎无解，帮您换一副')
+      flash('This hand seems impossible — dealing a new one')
       setTimeout(deal, 800)
     }
   }
@@ -253,4 +264,5 @@ export function useGame() {
     stopTimer,
   }
 }
+
 

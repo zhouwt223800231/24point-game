@@ -58,7 +58,7 @@ describe('solver 提示', () => {
   it('可解手牌返回第一步线索，且不包含完整答案', () => {
     const h = makeHint([1, 3, 4, 6], 24)
     expect(h).not.toBeNull()
-    expect(h.startsWith('先用')).toBe(true)
+    expect(h.startsWith('First use')).toBe(true)
     expect(h).not.toContain('6 / (1 - 3 / 4)')
     expect(h).not.toContain('6/(1-3/4)')
   })
@@ -68,3 +68,4 @@ describe('solver 提示', () => {
     expect(makeHint([10, 10, 10, 10], 24)).toBeNull()
   })
 })
+

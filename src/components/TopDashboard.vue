@@ -15,18 +15,20 @@ const timeText = computed(() => {
   <header class="dashboard">
     <div class="dash-left">
       <span class="target-badge">{{ game.state.target }}</span>
-      <span class="target-caption">目标</span>
+      <span class="target-caption">Target</span>
     </div>
     <div class="dash-mid">
-      <span class="stat"><b class="stat-num">{{ game.state.solved }}</b> 已解</span>
+      <span class="stat"><span class="stat-label">Score</span> <b class="stat-num">{{ game.state.score }}</b></span>
       <span class="stat-divider">·</span>
-      <span class="stat mono">{{ timeText }}</span>
+      <span class="stat"><span class="stat-label">Solved</span> <b class="stat-num">{{ game.state.solved }}</b></span>
+      <span class="stat-divider">·</span>
+      <span class="stat"><span class="stat-label">Time</span> <b class="stat-num mono">{{ timeText }}</b></span>
     </div>
     <div class="dash-right">
-      <button class="charcoal-btn small" title="撤销上一次叠牌" @click="game.undo()">撤销 ↶</button>
-      <button class="charcoal-btn small" title="合并线索" @click="game.hint()">提示 ?</button>
-      <button class="charcoal-btn small" title="换一副牌" @click="game.deal()">换牌 ⟳</button>
-      <button class="charcoal-btn small" title="重新开始" @click="game.restart()">重开</button>
+      <button class="charcoal-btn small" title="Undo last stack" @click="game.undo()">Undo ↶</button>
+      <button class="charcoal-btn small" title="Show a merge hint" @click="game.hint()">Hint ?</button>
+      <button class="charcoal-btn small" title="Deal a new hand" @click="game.deal()">New Hand ⟳</button>
+      <button class="charcoal-btn small" title="Restart the game" @click="game.restart()">Restart</button>
     </div>
   </header>
 </template>

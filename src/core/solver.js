@@ -91,7 +91,7 @@ function findFirstOp(tree) {
   return findFirstOp(tree.left) || findFirstOp(tree.right)
 }
 
-const OP_LABEL = { '+': '加', '-': '减', '*': '乘', '/': '除' }
+const OP_SYMBOL = { '+': '+', '-': '−', '*': '×', '/': '÷' }
 
 // 提示：只揭示第一步线索，不给出完整答案；无解返回 null
 export function makeHint(numbers, target) {
@@ -101,9 +101,10 @@ export function makeHint(numbers, target) {
   if (!first) return null
   const a = first.left.value
   const b = first.right.value
-  const label = OP_LABEL[first.op] || first.op
+  const sym = OP_SYMBOL[first.op] || first.op
   const v = first.v
   const res = v.d === 1 ? String(v.n) : `${v.n}/${v.d}`
-  return `先用 ${a} 和 ${b} ${label}，得到 ${res}`
+  return `First use ${a} ${sym} ${b} → ${res}`
 }
+
 

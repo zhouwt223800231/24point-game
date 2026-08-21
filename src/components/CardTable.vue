@@ -59,7 +59,7 @@ function onPointerUp(e) {
 <template>
   <section class="card-table">
     <div class="table-info">
-      <span class="trace-badge" title="当前算式">算式：{{ game.state.trace || '—' }}</span>
+      <span class="trace-badge" title="Current expression">Expr: {{ game.state.trace || '—' }}</span>
       <span v-if="game.state.hint" class="hint-badge">💡 {{ game.state.hint }}</span>
     </div>
 
@@ -91,4 +91,3 @@ function onPointerUp(e) {
     <div class="table-message" :class="{ show: game.state.message }">{{ game.state.message }}</div>
   </section>
 </template>
-

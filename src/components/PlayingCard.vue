@@ -32,6 +32,7 @@ const valueText = computed(() => formatRat(props.card.value))
       <span class="idx-value">{{ valueText }}</span>
       <span v-if="card.kind === 'original'" class="idx-suit">{{ card.suit }}</span>
     </div>
-    <span v-if="card.kind === 'merged'" class="merged-tag">合</span>
+    <span v-if="card.kind === 'merged'" class="merged-tag">Σ</span>
   </div>
 </template>
+
