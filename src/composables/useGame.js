@@ -1,7 +1,8 @@
-// 游戏状态机：发牌（保证可解）、槽位组装、括号、提交判定、提示、换牌、计分、计时。
+// 游戏状态机（V2 拖拽合成版）：发牌（保证可解）、拖拽合并、运算选择、自动结算、撤销、提示、计分、计时。
 import { reactive } from 'vue'
-import { hasSolution, makeHint } from '../core/solver'
-import { evaluateExpression, isComplete, parensNeverNegative } from '../core/expression'
+import { hasSolution, makeHint } from '../core/solver.js'
+import { combine, makeOriginalCard, isSolved, formatTree } from '../core/merge.js'
+import { formatRat } from '../core/rational.js'
 
 const SUITS = [
   { sym: '♠', color: 'black' },
@@ -32,34 +33,38 @@ function dealSolvable(target) {
   return [...FALLBACK_HANDS[randInt(0, FALLBACK_HANDS.length - 1)]]
 }
 
-const EMPTY_SLOTS = () => ({
-  nums: [null, null, null, null],
-  ops: [null, null, null],
-  openBefore: [false, false, false, false],
-  closeAfter: [false, false, false, false],
-})
+function cloneTree(t) {
+  if (t.kind === 'num') return { ...t }
+  return { ...t, left: cloneTree(t.left), right: cloneTree(t.right) }
+}
+
+// 卡组深拷贝（撤销快照用）
+function cloneCards(cards) {
+  return cards.map((c) => ({ ...c, value: { ...c.value }, tree: cloneTree(c.tree) }))
+}
 
 export function useGame() {
   const state = reactive({
-    target: 24, // 阶段一固定 24；阶段二/三从这里切换
-    cards: [],
-    ...EMPTY_SLOTS(),
+    target: 24, // 阶段二/三从这里切换 36/48/随机
+    cards: [], // 当前卡组（4 → 1 张）
+    handValues: [], // 本局原始 4 个数值（提示用）
     solved: 0,
     elapsed: 0,
     hint: '',
     message: '',
+    trace: '',
     fx: { type: '', active: false }, // success | error | invalid
     shake: 0,
+    drag: null, // { sourceId, pointerId, offsetX, offsetY, ghostX, ghostY, hoverTargetId }
+    pendingMerge: null, // { a, b, x, y } 运算选择器状态
   })
 
-  let history = []
+  let history = [] // 卡组快照栈（撤销）
   let timerId = null
   let messageTimer = null
   let fxTimer = null
 
-  function slotValues() {
-    return state.nums.map((i) => (i == null ? null : state.cards[i].value))
-  }
+  const findCard = (id) => state.cards.find((c) => c.id === id)
 
   function flash(msg) {
     state.message = msg
@@ -79,35 +84,24 @@ export function useGame() {
     }, type === 'success' ? 1600 : 1200)
   }
 
-  function pushHistory() {
-    history.push({
-      nums: [...state.nums],
-      ops: [...state.ops],
-      openBefore: [...state.openBefore],
-      closeAfter: [...state.closeAfter],
-    })
-    if (history.length > 100) history.shift()
-  }
-
-  function resetSlots() {
-    const empty = EMPTY_SLOTS()
-    state.nums = empty.nums
-    state.ops = empty.ops
-    state.openBefore = empty.openBefore
-    state.closeAfter = empty.closeAfter
-    history = []
+  function updateTrace() {
+    state.trace = state.cards.map((c) => formatTree(c.tree)).join('　·　')
   }
 
   function deal() {
     const values = dealSolvable(state.target)
-    state.cards = values.map((v) => {
+    state.handValues = [...values]
+    state.cards = values.map((v, i) => {
       const suit = SUITS[randInt(0, SUITS.length - 1)]
-      return { value: v, suit: suit.sym, color: suit.color }
+      return makeOriginalCard(v, i, { suit: suit.sym, color: suit.color })
     })
-    resetSlots()
+    history = []
     state.hint = ''
+    state.trace = values.join('　·　')
     state.fx.active = false
     state.message = ''
+    state.drag = null
+    state.pendingMerge = null
   }
 
   function restart() {
@@ -116,120 +110,91 @@ export function useGame() {
     deal()
   }
 
-  function isCardUsed(i) {
-    return state.nums.includes(i)
+  // ---- 拖拽 ----
+  function beginDrag(cardId, pointerId, offsetX, offsetY) {
+    if (state.cards.length <= 1) return false
+    if (!findCard(cardId)) return false
+    state.drag = { sourceId: cardId, pointerId, offsetX, offsetY, ghostX: 0, ghostY: 0, hoverTargetId: null }
+    return true
   }
 
-  function placeCard(cardIndex) {
-    if (state.cards[cardIndex] == null) return
-    if (isCardUsed(cardIndex)) return
-    const i = state.nums.findIndex((v) => v == null)
-    if (i === -1) {
-      flash('数字槽已满，先擦除再试')
+  function moveDrag(x, y, hoverTargetId) {
+    if (!state.drag) return
+    state.drag.ghostX = x - state.drag.offsetX
+    state.drag.ghostY = y - state.drag.offsetY
+    state.drag.hoverTargetId = hoverTargetId
+  }
+
+  function endDrag() {
+    const d = state.drag
+    if (!d) return
+    state.drag = null
+    if (d.hoverTargetId && d.hoverTargetId !== d.sourceId) {
+      prepareMerge(d.sourceId, d.hoverTargetId, d.ghostX, d.ghostY)
+    }
+  }
+
+  // ---- 运算选择器 ----
+  function prepareMerge(aId, bId, x, y) {
+    state.pendingMerge = { a: aId, b: bId, x, y }
+  }
+
+  function cancelMerge() {
+    state.pendingMerge = null
+  }
+
+  function applyMerge(op, reverse) {
+    const pm = state.pendingMerge
+    if (!pm) return
+    const a = findCard(pm.a)
+    const b = findCard(pm.b)
+    if (!a || !b) {
+      cancelMerge()
       return
     }
-    pushHistory()
-    state.nums[i] = cardIndex
-  }
-
-  function removeAtSlot(i) {
-    if (state.nums[i] == null) return
-    pushHistory()
-    state.nums[i] = null
-  }
-
-  function placeOp(op) {
-    const i = state.ops.findIndex((v) => v == null)
-    if (i === -1) {
-      flash('运算符已满')
+    const merged = combine(reverse ? b : a, reverse ? a : b, op)
+    if (!merged) {
+      flash('不能除以 0，换一种运算')
+      cancelMerge()
       return
     }
-    pushHistory()
-    state.ops[i] = op
+    history.push(cloneCards(state.cards))
+    state.cards = state.cards
+      .filter((c) => c.id !== pm.a)
+      .map((c) => (c.id === pm.b ? merged : c))
+    state.pendingMerge = null
+    state.hint = ''
+    updateTrace()
+    afterMerge()
   }
 
-  function removeOp(i) {
-    if (state.ops[i] == null) return
-    pushHistory()
-    state.ops[i] = null
-  }
-
-  // side: 'open'（数字前插 "("） | 'close'（数字后插 ")"）
-  function toggleParen(side, i) {
-    const nextOpen = [...state.openBefore]
-    const nextClose = [...state.closeAfter]
-    if (side === 'open') nextOpen[i] = !nextOpen[i]
-    else nextClose[i] = !nextClose[i]
-    // 不允许出现没有左括号配对的右括号（平衡为负即拒绝）
-    if (!parensNeverNegative(nextOpen, nextClose)) {
-      flash('括号不匹配')
-      return
+  function afterMerge() {
+    if (isSolved(state.cards, state.target)) {
+      state.solved++
+      triggerFx('success', '')
+      // 结算动效结束后自动发下一副牌
+      setTimeout(() => deal(), 1600)
+    } else if (state.cards.length === 1) {
+      const v = state.cards[0].value
+      triggerFx('error', `结果 ${formatRat(v)} ≠ ${state.target}，可撤销重试`)
     }
-    pushHistory()
-    state.openBefore = nextOpen
-    state.closeAfter = nextClose
-  }
-
-  function parenHint() {
-    flash('点击数字槽两边的 ( 或 ) 来插入括号')
   }
 
   function undo() {
     if (!history.length) {
-      flash('没有可撤销的操作')
+      flash('没有可撤销的步骤')
       return
     }
-    const prev = history.pop()
-    state.nums = prev.nums
-    state.ops = prev.ops
-    state.openBefore = prev.openBefore
-    state.closeAfter = prev.closeAfter
-  }
-
-  function clearAll() {
-    pushHistory()
-    const empty = EMPTY_SLOTS()
-    state.nums = empty.nums
-    state.ops = empty.ops
-    state.openBefore = empty.openBefore
-    state.closeAfter = empty.closeAfter
-  }
-
-  function submit() {
-    if (state.fx.active && state.fx.type === 'success') return
-    const values = slotValues()
-    if (!isComplete(values, state.ops)) {
-      flash('请填满算式再提交')
-      return
-    }
-    const res = evaluateExpression(values, state.ops, state.openBefore, state.closeAfter)
-    if (!res.ok) {
-      const msg =
-        res.reason === 'parens'
-          ? '括号不匹配，请调整'
-          : res.reason === 'div by zero'
-            ? '不能除以 0'
-            : '算式不合法'
-      triggerFx('invalid', msg)
-      return
-    }
-    if (Math.abs(res.value - state.target) < 1e-9) {
-      state.solved++
-      triggerFx('success', '')
-      // 结算动效结束后自动发下一副牌（deal() 会重置结算状态）
-      setTimeout(() => deal(), 1600)
-    } else {
-      triggerFx('error', `结果 ${formatValue(res.value)} ≠ ${state.target}，再试试`)
-    }
-  }
-
-  function formatValue(v) {
-    return Number.isInteger(v) ? String(v) : v.toFixed(2)
+    state.cards = history.pop()
+    state.pendingMerge = null
+    state.drag = null
+    state.fx.active = false
+    state.message = ''
+    updateTrace()
   }
 
   function hint() {
-    const hand = state.cards.map((c) => c.value)
-    const h = makeHint(hand, state.target)
+    const h = makeHint(state.handValues, state.target)
     if (h) {
       state.hint = h
     } else {
@@ -260,16 +225,13 @@ export function useGame() {
     state,
     deal,
     restart,
-    isCardUsed,
-    placeCard,
-    removeAtSlot,
-    placeOp,
-    removeOp,
-    toggleParen,
-    parenHint,
+    beginDrag,
+    moveDrag,
+    endDrag,
+    prepareMerge,
+    cancelMerge,
+    applyMerge,
     undo,
-    clearAll,
-    submit,
     hint,
     startTimer,
     stopTimer,

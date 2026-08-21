@@ -1,62 +1,14 @@
-// 24点求解器：子集 DP + 有理数（分数）四则运算，避免浮点误差。
+// 24点求解器：子集 DP + 有理数四则运算。
 // 支持任意目标值（24 / 36 / 48 / 随机），供发牌可解校验、提示生成使用。
-
-function gcd(a, b) {
-  a = Math.abs(a)
-  b = Math.abs(b)
-  while (b) {
-    const t = a % b
-    a = b
-    b = t
-  }
-  return a || 1
-}
-
-// 有理数：{ n: 分子, d: 分母 }，始终 d > 0 且已约分
-function rat(n, d = 1) {
-  if (d === 0) return null
-  if (d < 0) {
-    n = -n
-    d = -d
-  }
-  const g = gcd(n, d)
-  return { n: n / g, d: d / g }
-}
-
-const add = (a, b) => rat(a.n * b.d + b.n * a.d, a.d * b.d)
-const sub = (a, b) => rat(a.n * b.d - b.n * a.d, a.d * b.d)
-const mul = (a, b) => rat(a.n * b.n, a.d * b.d)
-const div = (a, b) => (b.n === 0 ? null : rat(a.n * b.d, a.d * b.n))
+import { rat, addRat, subRat, mulRat, divRat } from './rational.js'
+import { formatTree } from './merge.js'
 
 const OPS = [
-  { sym: '+', fn: add },
-  { sym: '-', fn: sub },
-  { sym: '*', fn: mul },
-  { sym: '/', fn: div },
+  { sym: '+', fn: addRat },
+  { sym: '-', fn: subRat },
+  { sym: '*', fn: mulRat },
+  { sym: '/', fn: divRat },
 ]
-
-const PREC = { '+': 1, '-': 1, '*': 2, '/': 2 }
-
-function needParens(childOp, parentOp, isRight) {
-  if (!childOp) return false
-  const cp = PREC[childOp]
-  const pp = PREC[parentOp]
-  if (cp < pp) return true
-  if (cp > pp) return false
-  // 相同优先级：加/乘左右都无需括号；减/除仅右侧需要
-  if (parentOp === '+' || parentOp === '*') return false
-  if (!isRight) return false
-  return true
-}
-
-export function formatTree(tree) {
-  if (tree.kind === 'num') return String(tree.value)
-  const left = formatTree(tree.left)
-  const right = formatTree(tree.right)
-  const ls = needParens(tree.left && tree.left.op, tree.op, false) ? `(${left})` : left
-  const rs = needParens(tree.right && tree.right.op, tree.op, true) ? `(${right})` : right
-  return `${ls} ${tree.op} ${rs}`
-}
 
 // 返回 { solutions: string[], full: [...] }，solutions 为去重后的中缀表达式
 export function solveAll(numbers, target) {
@@ -154,3 +106,4 @@ export function makeHint(numbers, target) {
   const res = v.d === 1 ? String(v.n) : `${v.n}/${v.d}`
   return `先用 ${a} 和 ${b} ${label}，得到 ${res}`
 }
+
