@@ -43,8 +43,10 @@ const timeText = computed(() => {
     <div class="dash-right">
       <button class="btn small" title="Undo last stack" @click="game.undo()">Undo ↶</button>
       <button class="btn small" title="Show a merge hint" @click="game.hint()">Hint ?</button>
+      <button class="btn small" title="Reveal the full solution (animated)" :disabled="game.state.demo.active" @click="game.revealAnswer()">Answer</button>
       <button class="btn small" title="Deal a new hand" @click="game.deal()">New Hand ⟳</button>
       <button class="btn small" title="Restart the game" @click="game.restart()">Restart</button>
     </div>
   </header>
 </template>
+

@@ -13,7 +13,7 @@ const OPS = [
 
 const activeGroup = computed(() => game.state.groups.find((g) => g.id === game.state.activeGroupId) || null)
 // 有可运算的叠（2 张以上）才启用
-const enabled = computed(() => !!activeGroup.value && !!activeGroup.value.sub)
+const enabled = computed(() => !!activeGroup.value && !!activeGroup.value.sub && !game.state.demo.active)
 const pending = computed(() => (activeGroup.value ? pendingCount(activeGroup.value) : 0))
 </script>
 
@@ -36,3 +36,4 @@ const pending = computed(() => (activeGroup.value ? pendingCount(activeGroup.val
     </div>
   </div>
 </template>
+

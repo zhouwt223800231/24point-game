@@ -1,10 +1,11 @@
 // 游戏状态机（V3 叠牌合成版）：发牌（保证可解）、拖牌叠放、运算符预览、自动结算、撤销、提示、计分、计时。
 import { reactive } from 'vue'
 import { makeHint } from '../core/solver.js'
-import { makeOriginalCard, makeSingleGroup, makeStack, setOp as mergeSetOp, groupIsSolved, formatGroupTree } from '../core/merge.js'
+import { makeOriginalCard, makeSingleGroup, makeStack, setOp as mergeSetOp, groupIsSolved, formatGroupTree, resolveValue } from '../core/merge.js'
 import { formatRat, toRat } from '../core/rational.js'
 import { getScoreBand, formatSeconds } from '../core/scoring.js'
 import { dealHand } from '../core/handpools.js'
+import { findSolution, buildDemoSteps } from '../core/demo.js'
 
 const SUITS = [
   { sym: '♠', color: 'black' },
@@ -63,9 +64,11 @@ export function useGame() {
     trace: '',
     fx: { type: '', active: false }, // success | error | invalid
     drag: null, // { sourceId, pointerId, offsetX, offsetY, ghostX, ghostY, hoverGroupId }
+    demo: { active: false, steps: [], index: 0, total: 0 }, // 答案揭晓演示
   })
 
   let history = [] // 叠牌快照栈（撤销）
+  let demoTimer = null
   let timerId = null
   let messageTimer = null
   let fxTimer = null
@@ -102,6 +105,11 @@ export function useGame() {
       return makeSingleGroup(makeOriginalCard(v, i, { suit: suit.sym, color: suit.color, face }), i)
     })
     history = []
+    if (demoTimer) {
+      clearTimeout(demoTimer)
+      demoTimer = null
+    }
+    state.demo = { active: false, steps: [], index: 0, total: 0 }
     state.roundStart = Date.now()
     state.lastRound = null
     state.activeGroupId = null
@@ -127,6 +135,7 @@ export function useGame() {
 
   // ---- 拖拽（按叠组命中） ----
   function beginDrag(groupId, pointerId, offsetX, offsetY) {
+    if (state.demo.active) return false
     if (state.groups.length <= 1) return false
     if (!findGroup(groupId)) return false
     state.drag = { sourceId: groupId, pointerId, offsetX, offsetY, ghostX: 0, ghostY: 0, hoverGroupId: null, moved: false }
@@ -166,23 +175,30 @@ export function useGame() {
   }
 
   // ---- 运算符（可切换预览） ----
-  function setOp(op) {
-    if (state.fx.active && state.fx.type === 'success') return
+  function applyOpToActive(op) {
     const id = state.activeGroupId
-    if (id == null) return
+    if (id == null) return false
     const g = findGroup(id)
-    if (!g || !g.sub) return
+    if (!g || !g.sub) return false
     const r = mergeSetOp(g, op)
     if (!r.ok && r.reason === 'div') {
       flash('Cannot divide by 0 — try another operation')
-      return
+      return false
     }
     updateTrace()
     afterOp()
+    return true
+  }
+
+  function setOp(op) {
+    if (state.demo.active) return
+    if (state.fx.active && state.fx.type === 'success') return
+    applyOpToActive(op)
   }
 
   function afterOp() {
     if (groupIsSolved(state.groups, state.target)) {
+      if (state.demo.active) return // 演示不计分，由演示流程收尾
       const seconds = (Date.now() - state.roundStart) / 1000
       const band = getScoreBand(seconds, state.difficulty)
       state.score += band.points
@@ -193,11 +209,12 @@ export function useGame() {
       setTimeout(() => deal(), 1600)
     } else if (state.groups.length === 1) {
       const v = state.groups[0].value
-      if (v) flash(`Result ${formatRat(v)} ≠ ${state.target} — keep adjusting`)
+      if (v && !state.demo.active) flash(`Result ${formatRat(v)} ≠ ${state.target} — keep adjusting`)
     }
   }
 
   function undo() {
+    if (state.demo.active) return
     if (!history.length) {
       flash('Nothing to undo')
       return
@@ -211,6 +228,7 @@ export function useGame() {
   }
 
   function hint() {
+    if (state.demo.active) return
     const h = makeHint(state.handValues, state.target)
     if (h) {
       state.hint = h
@@ -219,6 +237,65 @@ export function useGame() {
       flash('This hand seems impossible — dealing a new one')
       setTimeout(deal, 800)
     }
+  }
+
+  // ---- 答案揭晓（动画自动演示） ----
+  function groupsEqual(a, b) {
+    return !!a && !!b && a.n === b.n && a.d === b.d
+  }
+
+  function findDemoGroup(value) {
+    return state.groups.findIndex((g) => groupsEqual(resolveValue(g), value))
+  }
+
+  function revealAnswer() {
+    if (state.demo.active) return
+    if (state.groups.length <= 1) return
+    const tree = findSolution(state.handValues, state.difficulty, state.target)
+    if (!tree) {
+      flash('No solution found for this hand')
+      return
+    }
+    const steps = buildDemoSteps(tree)
+    state.demo = { active: true, steps, index: 0, total: steps.length }
+    state.message = `Demo 0/${steps.length}`
+    runDemoStep()
+  }
+
+  function runDemoStep() {
+    const d = state.demo
+    if (!d.active) return
+    if (d.index >= d.total) {
+      finishDemo()
+      return
+    }
+    const step = d.steps[d.index]
+    const li = findDemoGroup(step.left)
+    let ri = -1
+    if (li !== -1) {
+      ri = state.groups.findIndex((g, i) => i !== li && groupsEqual(resolveValue(g), step.right))
+    }
+    if (li === -1 || ri === -1) {
+      finishDemo()
+      return
+    }
+    // 左 op 右：把 left 拖到 right 上（left 为上层），再选运算符
+    stackOnto(state.groups[li].id, state.groups[ri].id)
+    applyOpToActive(step.op)
+    d.index++
+    state.message = `Demo ${d.index}/${d.total}`
+    demoTimer = setTimeout(runDemoStep, 700)
+  }
+
+  function finishDemo() {
+    if (demoTimer) {
+      clearTimeout(demoTimer)
+      demoTimer = null
+    }
+    if (!state.demo.active) return
+    state.demo.active = false
+    state.message = 'Answer shown — no points'
+    setTimeout(() => deal(), 1600)
   }
 
   function startTimer() {
@@ -243,6 +320,7 @@ export function useGame() {
     deal,
     restart,
     setDifficulty,
+    revealAnswer,
     beginDrag,
     moveDrag,
     endDrag,
@@ -254,6 +332,8 @@ export function useGame() {
     stopTimer,
   }
 }
+
+
 
 
 
