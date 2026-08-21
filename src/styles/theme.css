@@ -427,6 +427,9 @@ body {
   display: flex;
   gap: 12px;
 }
+.pending-note {
+  color: var(--accent-strong);
+}
 .op-btn {
   width: 72px;
   height: 56px;
@@ -573,6 +576,7 @@ body {
     min-height: 420px;
   }
 }
+
 
 
 

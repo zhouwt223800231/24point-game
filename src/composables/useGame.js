@@ -1,7 +1,7 @@
 // 游戏状态机（V3 叠牌合成版）：发牌（保证可解）、拖牌叠放、运算符预览、自动结算、撤销、提示、计分、计时。
 import { reactive } from 'vue'
 import { hasSolution, makeHint } from '../core/solver.js'
-import { makeOriginalCard, makeSingleGroup, makeStack, applyOp, groupIsSolved, formatGroupTree } from '../core/merge.js'
+import { makeOriginalCard, makeSingleGroup, makeStack, setOp as mergeSetOp, groupIsSolved, formatGroupTree } from '../core/merge.js'
 import { formatRat, toRat } from '../core/rational.js'
 import { getScoreBand, formatSeconds } from '../core/scoring.js'
 import { makeHardHand } from '../core/hardhands.js'
@@ -70,12 +70,7 @@ function cloneGroup(g) {
     op: g.op,
     value: g.value ? { ...g.value } : null,
     tree: g.tree ? cloneTree(g.tree) : null,
-    sub: g.sub
-      ? {
-          bottom: { value: { ...g.sub.bottom.value }, tree: cloneTree(g.sub.bottom.tree) },
-          top: { value: { ...g.sub.top.value }, tree: cloneTree(g.sub.top.tree) },
-        }
-      : null,
+    sub: g.sub ? { bottom: cloneGroup(g.sub.bottom), top: cloneGroup(g.sub.top) } : null,
   }
 }
 
@@ -161,10 +156,7 @@ export function useGame() {
   // ---- 拖拽（按叠组命中） ----
   function beginDrag(groupId, pointerId, offsetX, offsetY) {
     if (state.groups.length <= 1) return false
-    const g = findGroup(groupId)
-    if (!g) return false
-    // 待选运算的叠（2 张以上且未选运算符）必须先选运算符才能继续参与合并
-    if (g.layers.length >= 2 && !g.op) return false
+    if (!findGroup(groupId)) return false
     state.drag = { sourceId: groupId, pointerId, offsetX, offsetY, ghostX: 0, ghostY: 0, hoverGroupId: null, moved: false }
     return true
   }
@@ -191,8 +183,6 @@ export function useGame() {
     const src = findGroup(sourceId)
     const dst = findGroup(targetId)
     if (!src || !dst) return
-    if (src.layers.length >= 2 && !src.op) return
-    if (dst.layers.length >= 2 && !dst.op) return
     history.push({ groups: state.groups.map(cloneGroup), activeGroupId: state.activeGroupId })
     // 后拖来的（source）叠到目标（target）上面
     const stacked = makeStack(dst, src)
@@ -210,12 +200,11 @@ export function useGame() {
     if (id == null) return
     const g = findGroup(id)
     if (!g || !g.sub) return
-    const updated = applyOp(g, op)
-    if (!updated) {
+    const r = mergeSetOp(g, op)
+    if (!r.ok && r.reason === 'div') {
       flash('Cannot divide by 0 — try another operation')
       return
     }
-    state.groups = state.groups.map((x) => (x.id === id ? updated : x))
     updateTrace()
     afterOp()
   }
@@ -293,6 +282,10 @@ export function useGame() {
     stopTimer,
   }
 }
+
+
+
+
 
 
 

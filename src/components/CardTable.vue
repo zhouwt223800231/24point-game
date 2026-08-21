@@ -21,8 +21,6 @@ function hitTest(x, y) {
   for (let i = 0; i < game.state.groups.length; i++) {
     const g = game.state.groups[i]
     if (g.id === d.sourceId) continue
-    // 待选运算的叠不能作为投放目标
-    if (g.layers.length >= 2 && !g.op) continue
     const el = groupEls.value[i]
     if (!el) continue
     const r = el.getBoundingClientRect()
@@ -91,5 +89,6 @@ function onPointerUp(e) {
     <div class="table-message" :class="{ show: game.state.message }"><span>{{ game.state.message }}</span></div>
   </section>
 </template>
+
 
 

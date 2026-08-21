@@ -3,7 +3,10 @@ import {
   makeOriginalCard,
   makeSingleGroup,
   makeStack,
-  applyOp,
+  setOp,
+  resolveValue,
+  findNextPending,
+  pendingCount,
   groupIsSolved,
   formatGroupTree,
   combine,
@@ -32,8 +35,8 @@ describe('merge 卡片合并', () => {
   })
 })
 
-describe('merge 叠组模型', () => {
-  it('makeStack 合并 layers 并捕获 sub（后拖来的在上）', () => {
+describe('merge 叠组惰性模型', () => {
+  it('makeStack 合并 layers 并引用操作数组（后拖来的在上）', () => {
     const a = makeSingleGroup(makeOriginalCard(8, 'a'))
     const b = makeSingleGroup(makeOriginalCard(3, 'b'))
     const s = makeStack(a, b, 's1') // b 拖到 a 上 → b 在上
@@ -45,73 +48,75 @@ describe('merge 叠组模型', () => {
     expect(s.sub.top.value).toEqual({ n: 3, d: 1 })
   })
 
-  it('applyOp 按 top op bottom 固定顺序', () => {
+  it('setOp 按 top op bottom 固定顺序', () => {
     const a = makeSingleGroup(makeOriginalCard(8, 'a'))
     const b = makeSingleGroup(makeOriginalCard(3, 'b'))
     const s = makeStack(a, b, 's1') // top=3, bottom=8
-    const r1 = applyOp(s, '-') // 3 − 8 = -5
-    expect(r1.value).toEqual({ n: -5, d: 1 })
-    const r2 = applyOp(s, '/') // 3 / 8
-    expect(r2.value).toEqual({ n: 3, d: 8 })
-    expect(r2.tree.left.kind).toBe('num')
-    expect(r2.tree.right.kind).toBe('num')
+    expect(setOp(s, '-').ok).toBe(true)
+    expect(resolveValue(s)).toEqual({ n: -5, d: 1 }) // 3 − 8
+    expect(setOp(s, '/').ok).toBe(true)
+    expect(resolveValue(s)).toEqual({ n: 3, d: 8 }) // 3 / 8
   })
 
-  it('applyOp 可切换运算符（预览）', () => {
+  it('setOp 全解决后可预览切换最外层', () => {
     const a = makeSingleGroup(makeOriginalCard(8, 'a'))
     const b = makeSingleGroup(makeOriginalCard(3, 'b'))
     const s = makeStack(a, b, 's1')
-    const plus = applyOp(s, '+') // 11
-    const mul = applyOp(s, '*') // 24
-    expect(plus.value).toEqual({ n: 11, d: 1 })
-    expect(mul.value).toEqual({ n: 24, d: 1 })
+    setOp(s, '+')
+    expect(resolveValue(s)).toEqual({ n: 11, d: 1 })
+    setOp(s, '*')
+    expect(resolveValue(s)).toEqual({ n: 24, d: 1 })
   })
 
-  it('applyOp 除零返回 null', () => {
+  it('setOp 除零返回 { ok:false, reason:"div" } 并回滚', () => {
     const a = makeSingleGroup(makeOriginalCard(3, 'a'))
     const b = makeSingleGroup(makeOriginalCard(3, 'b'))
     const s = makeStack(a, b, 's1')
-    const zero = applyOp(s, '-') // 3 − 3 = 0
-    expect(zero.value).toEqual({ n: 0, d: 1 })
+    setOp(s, '-') // 3 − 3 = 0
     const c = makeSingleGroup(makeOriginalCard(5, 'c'))
-    const s2 = makeStack(zero, c, 's2') // c(5) 在上
-    const r = applyOp(s2, '/') // 5 / 0
-    expect(r).toBeNull()
+    const s2 = makeStack(s, c, 's2') // c(5) 在上，bottom=0
+    const r = setOp(s2, '/') // 5 / 0
+    expect(r.ok).toBe(false)
+    expect(r.reason).toBe('div')
+    expect(s2.op).toBeNull()
+    expect(resolveValue(s2)).toBeNull()
   })
 
-  it('三层叠放 value/tree 正确', () => {
+  it('惰性嵌套：先解决内层，再解决外层', () => {
     const a = makeSingleGroup(makeOriginalCard(8, 'a'))
     const b = makeSingleGroup(makeOriginalCard(3, 'b'))
-    const s1 = makeStack(a, b, 's1')
-    const s1r = applyOp(s1, '/') // 3 / 8
-    const c = makeSingleGroup(makeOriginalCard(4, 'c'))
-    const s2 = makeStack(s1r, c, 's2') // c(4) 在上
-    const s2r = applyOp(s2, '/') // 4 ÷ (3/8) = 32/3
-    expect(s2r.value).toEqual({ n: 32, d: 3 })
-    expect(formatGroupTree(s2r)).toBe('4 / (3 / 8)')
+    const c = makeSingleGroup(makeOriginalCard(10, 'c'))
+    const g1 = makeStack(a, b, 'g1') // pending (3 ? 8)
+    const g2 = makeStack(c, g1, 'g2') // g1 在上，c 在下 → 外层 pending
+    expect(pendingCount(g2)).toBe(2)
+    // 第一次点击 → 解决内层 (3+8=11)，外层仍未决
+    expect(setOp(g2, '+').ok).toBe(true)
+    expect(pendingCount(g2)).toBe(1)
+    expect(resolveValue(g2)).toBeNull()
+    // 第二次点击 → 解决外层 (11 − 10 = 1)
+    expect(setOp(g2, '-').ok).toBe(true)
+    expect(resolveValue(g2)).toEqual({ n: 1, d: 1 })
+    expect(pendingCount(g2)).toBe(0)
+    expect(formatGroupTree(g2)).toBe('((3 + 8) - 10)')
   })
 
-  it('groupIsSolved 仅当单叠且等于目标', () => {
+  it('groupIsSolved 仅当单叠且值等于目标', () => {
     expect(groupIsSolved([makeSingleGroup(makeOriginalCard(24, 'x'))], 24)).toBe(true)
     expect(groupIsSolved([makeSingleGroup(makeOriginalCard(25, 'x'))], 24)).toBe(false)
-    expect(groupIsSolved([makeSingleGroup(makeOriginalCard(12, 'x')), makeSingleGroup(makeOriginalCard(12, 'y'))], 24)).toBe(false)
+    const a = makeSingleGroup(makeOriginalCard(12, 'a'))
+    const b = makeSingleGroup(makeOriginalCard(12, 'b'))
+    expect(groupIsSolved([makeStack(a, b, 's')], 24)).toBe(false) // 未决
+    setOp(makeStack(a, b, 's2'), '+')
   })
 
-  it('formatGroupTree 未选运算显示 ?', () => {
+  it('formatGroupTree：未决显示 ?，已决带括号', () => {
     const a = makeSingleGroup(makeOriginalCard(8, 'a'))
     const b = makeSingleGroup(makeOriginalCard(3, 'b'))
     const s = makeStack(a, b, 's1')
-    expect(formatGroupTree(s)).toBe('3 ? 8')
+    expect(formatGroupTree(s)).toBe('(3 ? 8)')
+    setOp(s, '+')
+    expect(formatGroupTree(s)).toBe('(3 + 8)')
     expect(formatGroupTree(a)).toBe('8')
   })
-
-  it('applyOp 防御：嵌套未选运算的叠返回 null（树缺失）', () => {
-    const a = makeSingleGroup(makeOriginalCard(8, 'a'))
-    const b = makeSingleGroup(makeOriginalCard(3, 'b'))
-    const pending = makeStack(a, b, 's1') // 未选运算，tree=null
-    expect(pending.tree).toBeNull()
-    const c = makeSingleGroup(makeOriginalCard(5, 'c'))
-    const nested = makeStack(pending, c, 's2') // sub.bottom.tree = null
-    expect(applyOp(nested, '+')).toBeNull()
-  })
 })
+
