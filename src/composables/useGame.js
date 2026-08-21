@@ -127,7 +127,10 @@ export function useGame() {
   // ---- 拖拽（按叠组命中） ----
   function beginDrag(groupId, pointerId, offsetX, offsetY) {
     if (state.groups.length <= 1) return false
-    if (!findGroup(groupId)) return false
+    const g = findGroup(groupId)
+    if (!g) return false
+    // 待选运算的叠（2 张以上且未选运算符）必须先选运算符才能继续参与合并
+    if (g.layers.length >= 2 && !g.op) return false
     state.drag = { sourceId: groupId, pointerId, offsetX, offsetY, ghostX: 0, ghostY: 0, hoverGroupId: null }
     return true
   }
@@ -153,6 +156,8 @@ export function useGame() {
     const src = findGroup(sourceId)
     const dst = findGroup(targetId)
     if (!src || !dst) return
+    if (src.layers.length >= 2 && !src.op) return
+    if (dst.layers.length >= 2 && !dst.op) return
     history.push({ groups: state.groups.map(cloneGroup), activeGroupId: state.activeGroupId })
     // 后拖来的（source）叠到目标（target）上面
     const stacked = makeStack(dst, src)
@@ -248,3 +253,4 @@ export function useGame() {
     stopTimer,
   }
 }
+

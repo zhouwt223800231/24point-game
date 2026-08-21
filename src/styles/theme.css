@@ -210,8 +210,7 @@ body::before {
 }
 .card-stack {
   position: relative;
-  width: 120px;
-  height: 176px;
+  height: 182px;
 }
 .stack-layers {
   position: absolute;
@@ -220,6 +219,9 @@ body::before {
 .stack-layer {
   position: absolute;
   inset: 0;
+}
+.card-stack.stacked .playing-card {
+  transform-origin: bottom left;
 }
 .card-stack.dragging {
   opacity: 0.3;
@@ -230,24 +232,15 @@ body::before {
 .card-stack.ghost .stack-result {
   display: none;
 }
-/* 活动叠（待选/可换运算符）：炭笔红虚线框 */
-.card-stack.active::after {
-  content: "";
-  position: absolute;
-  inset: -10px;
-  border: 3px dashed var(--red);
-  border-radius: 20px;
-  pointer-events: none;
-  opacity: 0.9;
-}
-/* 拖拽命中叠：红色光晕 */
+
+/* 拖拽命中叠：炭笔墨线描边 */
 .group-slot.is-target .card-stack::after {
   content: "";
   position: absolute;
   inset: -10px;
-  border: 3px solid var(--red);
+  border: 3px dashed var(--ink);
   border-radius: 20px;
-  box-shadow: 0 0 18px rgba(178, 58, 46, 0.6);
+  opacity: 0.85;
   pointer-events: none;
 }
 /* 叠下方淡显结果 */
@@ -287,43 +280,46 @@ body::before {
 .playing-card.red {
   color: var(--red);
 }
-.playing-card.merged .card-value {
-  font-size: 38px;
+.playing-card.merged .idx-value {
+  font-size: 24px;
 }
-.corner {
+/* 经典扑克角标：左上数字+花色，右下 180° 镜像 */
+.corner-index {
   position: absolute;
-  font-size: 22px;
-  font-weight: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   line-height: 1;
+  pointer-events: none;
 }
-.corner.top {
-  top: 8px;
-  left: 10px;
+.corner-index.tl {
+  top: 7px;
+  left: 9px;
 }
-.corner.bottom {
-  bottom: 8px;
-  right: 10px;
+.corner-index.br {
+  bottom: 7px;
+  right: 9px;
   transform: rotate(180deg);
+}
+.idx-value {
+  font-size: 34px;
+  font-weight: 900;
+}
+.idx-suit {
+  font-size: 16px;
+  font-weight: 900;
+  margin-top: 2px;
 }
 .merged-tag {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 15px;
+  top: 6px;
+  right: 8px;
+  font-size: 12px;
   font-weight: 900;
   color: var(--card-bg);
   background: var(--ink);
-  border-radius: 6px;
-  padding: 1px 6px;
-}
-.card-value {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 58px;
-  font-weight: 900;
+  border-radius: 5px;
+  padding: 1px 5px;
 }
 
 /* 拖拽幽灵叠 */
@@ -366,26 +362,55 @@ body::before {
   padding: 4px 0 2px;
 }
 .order-hint {
+  position: relative;
   font-size: 14px;
   letter-spacing: 1px;
   color: rgba(251, 246, 234, 0.92);
   background: rgba(43, 38, 32, 0.6);
-  padding: 3px 12px;
+  padding: 3px 12px 6px;
   border-radius: 8px;
+}
+.order-hint::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  height: 2px;
+  opacity: 0.6;
+  background: repeating-linear-gradient(90deg, rgba(251, 246, 234, 0.9) 0 6px, transparent 6px 11px);
 }
 .op-row {
   display: flex;
   gap: 14px;
 }
 .op-btn {
+  --rot: 0deg;
   width: 74px;
   height: 62px;
   font-size: 32px;
   border-radius: 14px;
+  border-width: 4px;
+  box-shadow: 0 0 0 2px rgba(43, 38, 32, 0.18), 3px 4px 0 var(--shadow);
+  filter: url(#rough-ink);
+  transform: rotate(var(--rot));
 }
+.op-btn:hover:not(:disabled) {
+  transform: rotate(var(--rot)) translateY(-2px);
+}
+.op-btn:active:not(:disabled) {
+  transform: rotate(var(--rot)) translate(2px, 2px);
+}
+.op-btn:nth-child(1) { --rot: -2deg; }
+.op-btn:nth-child(2) { --rot: 1.5deg; }
+.op-btn:nth-child(3) { --rot: -1deg; }
+.op-btn:nth-child(4) { --rot: 2deg; }
 .op-btn.selected {
   background: var(--ink);
   color: var(--card-bg);
+}
+.op-btn:disabled {
+  opacity: 0.4;
 }
 
 /* ============ 成功结算覆盖层 ============ */
@@ -499,15 +524,14 @@ body::before {
     width: 84px;
     height: 122px;
   }
-  .card-value {
-    font-size: 46px;
+  .idx-value {
+    font-size: 26px;
   }
-  .playing-card.merged .card-value {
-    font-size: 32px;
+  .playing-card.merged .idx-value {
+    font-size: 20px;
   }
   .card-stack {
-    width: 96px;
-    height: 140px;
+    height: 150px;
   }
   .stack-result {
     font-size: 18px;
@@ -528,3 +552,4 @@ body::before {
     min-height: 420px;
   }
 }
+

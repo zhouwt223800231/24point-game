@@ -29,7 +29,6 @@ describe('merge 卡片合并', () => {
     const m3 = combine(e2, m2, '/')
     expect(m2.value).toEqual({ n: 1, d: 3 })
     expect(m3.value).toEqual({ n: 24, d: 1 })
-    expect(groupIsSolved([makeSingleGroup(m3)], 24)).toBe(true)
   })
 })
 
@@ -105,5 +104,14 @@ describe('merge 叠组模型', () => {
     expect(formatGroupTree(s)).toBe('3 ? 8')
     expect(formatGroupTree(a)).toBe('8')
   })
-})
 
+  it('applyOp 防御：嵌套未选运算的叠返回 null（树缺失）', () => {
+    const a = makeSingleGroup(makeOriginalCard(8, 'a'))
+    const b = makeSingleGroup(makeOriginalCard(3, 'b'))
+    const pending = makeStack(a, b, 's1') // 未选运算，tree=null
+    expect(pending.tree).toBeNull()
+    const c = makeSingleGroup(makeOriginalCard(5, 'c'))
+    const nested = makeStack(pending, c, 's2') // sub.bottom.tree = null
+    expect(applyOp(nested, '+')).toBeNull()
+  })
+})

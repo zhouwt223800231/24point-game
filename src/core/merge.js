@@ -70,10 +70,12 @@ export function makeStack(bottomGroup, topGroup, id) {
   }
 }
 
-// 应用/切换运算符：top op bottom；除零返回 null
+// 应用/切换运算符：top op bottom；除零/树缺失（待选运算的叠被嵌套）返回 null
 export function applyOp(group, op) {
   if (!group.sub) return null
-  const merged = combine(group.sub.top, group.sub.bottom, op)
+  const { bottom, top } = group.sub
+  if (!bottom.tree || !top.tree || !bottom.value || !top.value) return null
+  const merged = combine(top, bottom, op)
   if (!merged) return null
   return { ...group, op, value: merged.value, tree: merged.tree }
 }
@@ -94,3 +96,4 @@ export function formatGroupTree(group) {
   const bottom = group.sub && group.sub.bottom
   return `${top ? formatTree(top.tree) : '?'} ? ${bottom ? formatTree(bottom.tree) : '?'}`
 }
+

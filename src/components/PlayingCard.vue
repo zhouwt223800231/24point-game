@@ -7,7 +7,7 @@ const props = defineProps({
   index: { type: Number, default: 0 },
   dragging: { type: Boolean, default: false },
   ghost: { type: Boolean, default: false },
-  tilt: { type: String, default: '' }, // 自定义倾斜/偏移（叠牌层用）
+  tilt: { type: String, default: '' }, // 自定义倾斜/偏移（叠牌扇形层用）
 })
 
 const TILTS = [
@@ -23,11 +23,15 @@ const valueText = computed(() => formatRat(props.card.value))
 
 <template>
   <div class="playing-card" :class="{ red: card.color === 'red', merged: card.kind === 'merged', dragging, ghost }" :style="style">
-    <template v-if="card.kind === 'original'">
-      <span class="corner top">{{ card.suit }}</span>
-      <span class="corner bottom">{{ card.suit }}</span>
-    </template>
-    <span v-else class="merged-tag">合</span>
-    <span class="card-value">{{ valueText }}</span>
+    <!-- 经典扑克角标：左上数字+花色，右下 180° 镜像 -->
+    <div class="corner-index tl">
+      <span class="idx-value">{{ valueText }}</span>
+      <span v-if="card.kind === 'original'" class="idx-suit">{{ card.suit }}</span>
+    </div>
+    <div class="corner-index br">
+      <span class="idx-value">{{ valueText }}</span>
+      <span v-if="card.kind === 'original'" class="idx-suit">{{ card.suit }}</span>
+    </div>
+    <span v-if="card.kind === 'merged'" class="merged-tag">合</span>
   </div>
 </template>
