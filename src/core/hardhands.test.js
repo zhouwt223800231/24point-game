@@ -1,19 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { isFractionRequired, constructiveCandidates, HARD_FALLBACK_POOL, makeHardHand } from '../core/hardhands.js'
+import { isFractionRequired } from '../core/hardhands.js'
 
-describe('hardhands 必须分数步', () => {
-  it('构造法候选全部通过谓词', () => {
-    const cons = constructiveCandidates(24)
-    expect(cons.length).toBeGreaterThan(0)
-    for (const h of cons) expect(isFractionRequired(h, 24)).toBe(true)
+describe('hardhands 必须分数步判定', () => {
+  it('已知分数步手牌为 true', () => {
+    expect(isFractionRequired([1, 3, 4, 6])).toBe(true)
+    expect(isFractionRequired([3, 3, 8, 8])).toBe(true)
+    expect(isFractionRequired([1, 5, 5, 5])).toBe(true)
+    expect(isFractionRequired([4, 4, 7, 7])).toBe(true)
   })
 
-  it('兜底池每副可解且必须分数步', () => {
-    expect(HARD_FALLBACK_POOL.length).toBeGreaterThan(0)
-    for (const h of HARD_FALLBACK_POOL) expect(isFractionRequired(h, 24)).toBe(true)
-  })
-
-  it('makeHardHand 返回的手牌均通过谓词', () => {
-    for (let i = 0; i < 20; i++) expect(isFractionRequired(makeHardHand(24), 24)).toBe(true)
+  it('整数路径手牌为 false', () => {
+    expect(isFractionRequired([1, 2, 3, 4])).toBe(false)
+    expect(isFractionRequired([2, 3, 5, 6])).toBe(false)
   })
 })

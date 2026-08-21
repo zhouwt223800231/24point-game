@@ -1,10 +1,10 @@
 // 游戏状态机（V3 叠牌合成版）：发牌（保证可解）、拖牌叠放、运算符预览、自动结算、撤销、提示、计分、计时。
 import { reactive } from 'vue'
-import { hasSolution, makeHint } from '../core/solver.js'
+import { makeHint } from '../core/solver.js'
 import { makeOriginalCard, makeSingleGroup, makeStack, setOp as mergeSetOp, groupIsSolved, formatGroupTree } from '../core/merge.js'
 import { formatRat, toRat } from '../core/rational.js'
 import { getScoreBand, formatSeconds } from '../core/scoring.js'
-import { makeHardHand } from '../core/hardhands.js'
+import { dealHand } from '../core/handpools.js'
 
 const SUITS = [
   { sym: '♠', color: 'black' },
@@ -13,19 +13,6 @@ const SUITS = [
   { sym: '♦', color: 'red' },
 ]
 
-// 三档难度：Easy=只用 +−×、Medium=四则但中间值整数、Hard=整数牌但必须分数中间步
-const EASY_FALLBACK = [
-  [1, 2, 3, 4],
-  [1, 4, 5, 8],
-  [2, 3, 4, 6],
-  [3, 4, 6, 8],
-]
-const MEDIUM_FALLBACK = [
-  [1, 2, 3, 4],
-  [2, 3, 5, 6],
-  [3, 5, 6, 8],
-  [2, 3, 4, 6],
-]
 // 值为 10 的牌面值（JOKER 代表大小王，数值均记 10）
 const FACES = ['10', 'J', 'Q', 'K', 'JOKER']
 
@@ -33,24 +20,9 @@ function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1))
 }
 
-// 按难度抽一副整数可解手牌（返回数值数组）
+// 按难度从"已验证可解手牌池"发牌（dealHand 保证每副都有正确算法）
 function drawHand(difficulty, target) {
-  if (difficulty === 'easy') {
-    for (let i = 0; i < 20; i++) {
-      const nums = [0, 1, 2, 3].map(() => randInt(1, 10))
-      if (hasSolution(nums, target, { allowOps: ['+', '-', '*'] })) return nums
-    }
-    return [...EASY_FALLBACK[randInt(0, EASY_FALLBACK.length - 1)]]
-  }
-  if (difficulty === 'hard') {
-    return makeHardHand(target)
-  }
-  // medium
-  for (let i = 0; i < 20; i++) {
-    const nums = [0, 1, 2, 3].map(() => randInt(1, 10))
-    if (hasSolution(nums, target, { integerOnly: true })) return nums
-  }
-  return [...MEDIUM_FALLBACK[randInt(0, MEDIUM_FALLBACK.length - 1)]]
+  return dealHand(difficulty, target)
 }
 
 function cloneTree(t) {
@@ -282,6 +254,7 @@ export function useGame() {
     stopTimer,
   }
 }
+
 
 
 
